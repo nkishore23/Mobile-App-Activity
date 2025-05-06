@@ -209,6 +209,17 @@ fun ProfileScreen(
                     )
                 }
 
+                Button(onClick = {
+                    localContext.startActivity(Intent(localContext, WeatherActivity::class.java))
+                }
+                ) {
+                    Text(
+                        text = "Show  Weather",
+                        fontSize = 18.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+
 
             }
         }
