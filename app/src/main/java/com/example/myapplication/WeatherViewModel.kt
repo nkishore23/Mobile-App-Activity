@@ -1,8 +1,8 @@
+// WeatherViewModel.kt
 package com.example.myapplication
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,12 +12,12 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
+import com.google.gson.annotations.SerializedName
 
 class WeatherViewModel : ViewModel() {
-    private val _weatherData = MutableStateFlow(WeatherData(isLoading = false))
-    val weatherData: StateFlow<WeatherData> = _weatherData.asStateFlow()
+    private val _weatherList = MutableStateFlow<List<WeatherData>>(emptyList())
+    val weatherList: StateFlow<List<WeatherData>> = _weatherList.asStateFlow()
 
-    // API interface using Retrofit
     private interface OpenMeteoApi {
         @GET("v1/forecast")
         suspend fun getWeather(
@@ -27,7 +27,6 @@ class WeatherViewModel : ViewModel() {
         ): WeatherResponse
     }
 
-    // Response data classes
     private data class WeatherResponse(
         val latitude: Double,
         val longitude: Double,
@@ -41,7 +40,6 @@ class WeatherViewModel : ViewModel() {
         @SerializedName("wind_speed_10m") val windSpeed: Double
     )
 
-    // Simple mapping of weather codes to descriptions
     private fun getWeatherDescription(code: Int): String {
         return when (code) {
             0 -> "Clear sky"
@@ -58,7 +56,6 @@ class WeatherViewModel : ViewModel() {
         }
     }
 
-    // Simplified city to coordinates mapping
     private fun getCityCoordinates(city: String): Pair<Double, Double> {
         return when (city.lowercase()) {
             "london" -> Pair(51.5074, -0.1278)
@@ -71,7 +68,6 @@ class WeatherViewModel : ViewModel() {
         }
     }
 
-    // Create Retrofit instance
     private val retrofit = Retrofit.Builder()
         .baseUrl("https://api.open-meteo.com/")
         .addConverterFactory(GsonConverterFactory.create())
@@ -79,45 +75,54 @@ class WeatherViewModel : ViewModel() {
 
     private val weatherApi = retrofit.create(OpenMeteoApi::class.java)
 
-    // Fetch weather for a city
     fun fetchWeather(city: String) {
         viewModelScope.launch {
-            try {
-                _weatherData.update { it.copy(isLoading = true, error = null) }
-
-                val (lat, lon) = getCityCoordinates(city)
-                if (lat == 0.0 && lon == 0.0) {
-                    _weatherData.update { it.copy(
-                        isLoading = false,
-                        error = "City not found. Try London, New York, Tokyo, Paris, Berlin or Rome."
-                    )}
-                    return@launch
+            val (lat, lon) = getCityCoordinates(city)
+            if (lat == 0.0 && lon == 0.0) {
+                _weatherList.update {
+                    listOf(WeatherData(city = city, isLoading = false, error = "City not found. Try London, New York, Tokyo, Paris, Berlin or Rome.")) + it
                 }
+                return@launch
+            }
 
+            _weatherList.update {
+                listOf(WeatherData(city = city, isLoading = true)) + it.filterNot { d -> d.city.equals(city, ignoreCase = true) }
+            }
+
+            try {
                 val response = weatherApi.getWeather(lat, lon)
-
-                _weatherData.update {
-                    WeatherData(
-                        city = city,
-                        temperature = response.current.temperature,
-                        description = getWeatherDescription(response.current.weatherCode),
-                        humidity = response.current.humidity,
-                        windSpeed = response.current.windSpeed,
-                        isLoading = false,
-                        error = null
-                    )
+                val newWeather = WeatherData(
+                    city = city,
+                    temperature = response.current.temperature,
+                    description = getWeatherDescription(response.current.weatherCode),
+                    humidity = response.current.humidity,
+                    windSpeed = response.current.windSpeed,
+                    isLoading = false,
+                    error = null
+                )
+                _weatherList.update {
+                    listOf(newWeather) + it.filterNot { d -> d.city.equals(city, ignoreCase = true) }
                 }
             } catch (e: Exception) {
-                _weatherData.update { it.copy(
-                    isLoading = false,
-                    error = "Error: ${e.localizedMessage}"
-                )}
+                _weatherList.update {
+                    listOf(WeatherData(city = city, isLoading = false, error = "Error: ${e.localizedMessage}")) + it.filterNot { d -> d.city.equals(city, ignoreCase = true) }
+                }
             }
         }
     }
 
-    // Initialize with London weather
     init {
         fetchWeather("London")
     }
 }
+
+// WeatherData.kt
+data class WeatherData(
+    val city: String = "",
+    val temperature: Double = 0.0,
+    val description: String = "",
+    val humidity: Int = 0,
+    val windSpeed: Double = 0.0,
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
