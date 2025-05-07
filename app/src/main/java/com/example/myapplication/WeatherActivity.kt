@@ -1,5 +1,7 @@
 package com.example.myapplication
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,6 +22,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -40,8 +43,11 @@ import com.google.gson.annotations.SerializedName
 import kotlin.math.roundToInt
 
 class WeatherActivity : ComponentActivity() {
+    private lateinit var sharedPreferences : SharedPreferences;
+    private val LAST_CITY = "last_city"
         override fun onCreate(savedInstanceState: Bundle?) {
             super.onCreate(savedInstanceState)
+            sharedPreferences = this.getSharedPreferences("MyPref", Context.MODE_PRIVATE)
             setContent {
                 MyApplicationTheme {
                     Surface(
@@ -52,6 +58,14 @@ class WeatherActivity : ComponentActivity() {
                 }
             }
         }
+
+    fun saveLastCity(city:String) {
+        sharedPreferences.edit().putString(LAST_CITY,city).apply()
+    }
+
+    fun getLastCity():String {
+        return sharedPreferences.getString(LAST_CITY, null)?:"London"
+    }
     }
 
     // Single data class for weather information
@@ -70,6 +84,13 @@ fun WeatherScreen() {
     val viewModel: WeatherViewModel = viewModel()
     val weatherData by viewModel.weatherData.collectAsState()
     var cityInput by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    var activity: WeatherActivity = context as WeatherActivity;
+
+    LaunchedEffect(true) {
+        cityInput = activity.getLastCity()
+        viewModel.fetchWeather(cityInput)
+    }
 
     Column(
         modifier = Modifier
@@ -86,7 +107,6 @@ fun WeatherScreen() {
                 value = cityInput,
                 onValueChange = { cityInput = it },
                 label = { Text("Enter city") },
-
                 modifier = Modifier.weight(1f)
             )
 
@@ -95,6 +115,7 @@ fun WeatherScreen() {
             Button(onClick = {
                 if (cityInput.isNotEmpty()) {
                     viewModel.fetchWeather(cityInput)
+                    activity.saveLastCity(cityInput)
                 }
             }) {
                 Text("Search")
