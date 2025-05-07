@@ -1,4 +1,3 @@
-// WeatherActivity.kt
 package com.example.myapplication
 
 import android.os.Bundle
@@ -89,44 +88,80 @@ fun WeatherCard(weatherData: WeatherData) {
         ) {
             if (weatherData.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.size(50.dp))
-                return
+                return@Column
             }
 
             if (weatherData.error != null) {
-                Text(text = weatherData.error!!)
-                return
+                Text("Error: ${weatherData.error}", color = MaterialTheme.colorScheme.error)
+                return@Column
             }
 
-            Text(
-                text = weatherData.city,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "${weatherData.temperature.roundToInt()}°C",
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = weatherData.description,
-                style = MaterialTheme.typography.titleMedium
-            )
-            Divider(modifier = Modifier.padding(vertical = 16.dp))
+            Text(weatherData.city, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(imageVector = Icons.Default.Opacity, contentDescription = "Humidity")
-                    Text("Humidity")
-                    Text(text = "${weatherData.humidity}%", fontWeight = FontWeight.Bold)
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(imageVector = Icons.Default.Cloud, contentDescription = "Wind")
-                    Text("Wind")
-                    Text(text = "${weatherData.windSpeed} m/s", fontWeight = FontWeight.Bold)
-                }
+                Icon(Icons.Default.WbSunny, contentDescription = null)
+                Text("${weatherData.temperature.roundToInt()}°C")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Cloud, contentDescription = null)
+                Text("${weatherData.description}")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Opacity, contentDescription = null)
+                Text("Humidity: ${weatherData.humidity}%")
             }
         }
+    }
+}
+
+@Composable
+fun MyApplicationTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = lightColorScheme(),
+        typography = Typography(),
+        content = content
+    )
+}
+
+// Dummy data classes
+
+data class WeatherData(
+    val city: String = "",
+    val temperature: Float = 0f,
+    val description: String = "",
+    val humidity: Int = 0,
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+
+class WeatherViewModel : ViewModel() {
+    private val _weatherList = mutableStateListOf<WeatherData>()
+    val weatherList: State<List<WeatherData>> = derivedStateOf { _weatherList }
+
+    fun fetchWeather(city: String) {
+        _weatherList.add(
+            WeatherData(
+                city = city,
+                temperature = (20..30).random().toFloat(),
+                description = "Clear sky",
+                humidity = (50..100).random(),
+                isLoading = false,
+                error = null
+            )
+        )
     }
 }
