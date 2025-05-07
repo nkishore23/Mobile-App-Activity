@@ -1,0 +1,15 @@
+workflows:
+  android-build:
+    name: Android Debug APK
+    max_build_duration: 30
+    environment:
+      vars:
+        JAVA_VERSION: 11
+      java: "$JAVA_VERSION"
+    scripts:
+      - name: Grant execute permission for gradlew
+        script: chmod +x ./gradlew
+      - name: Build APK
+        script: ./gradlew assembleDebug
+    artifacts:
+      - app/build/outputs/**/*.apk
