@@ -5,44 +5,27 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.GET
-import retrofit2.http.Query
-import com.google.gson.annotations.SerializedName
-import kotlin.math.roundToInt
+import com.github.mikephil.charting.charts.PieChart
+import com.github.mikephil.charting.data.PieEntry
+import com.github.mikephil.charting.utils.ColorTemplate
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.*
-import androidx.compose.ui.Alignment
+import kotlin.math.roundToInt
 
 class WeatherActivity : ComponentActivity() {
     private lateinit var sharedPreferences: SharedPreferences
@@ -53,9 +36,7 @@ class WeatherActivity : ComponentActivity() {
         sharedPreferences = this.getSharedPreferences("MyPref", Context.MODE_PRIVATE)
         setContent {
             MyApplicationTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize()
-                ) {
+                Surface(modifier = Modifier.fillMaxSize()) {
                     WeatherScreen()
                 }
             }
@@ -70,16 +51,6 @@ class WeatherActivity : ComponentActivity() {
         return sharedPreferences.getString(LAST_CITY, null) ?: "London"
     }
 }
-
-data class WeatherData(
-    val city: String = "",
-    val temperature: Double = 0.0,
-    val description: String = "",
-    val humidity: Int = 0,
-    val windSpeed: Double = 0.0,
-    val isLoading: Boolean = false,
-    val error: String? = null
-)
 
 @Composable
 fun WeatherScreen() {
@@ -96,9 +67,18 @@ fun WeatherScreen() {
         viewModel.fetchWeather(cityInput)
     }
 
+    val backgroundColor = when (weatherData.description.lowercase()) {
+        "clear sky" -> Color(0xFF87CEEB)  // Light blue for clear skies
+        "partly cloudy" -> Color(0xFFD3D3D3)  // Gray for partly cloudy
+        "fog" -> Color(0xFF696969)  // Dark gray for fog
+        "rain" -> Color(0xFF4682B4)  // Steel blue for rain
+        else -> Color.White  // Default white
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(backgroundColor)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -108,10 +88,7 @@ fun WeatherScreen() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { activity.onBackPressed() }) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back"
-                )
+                Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
             }
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -212,7 +189,7 @@ fun WeatherScreen() {
                             // City name
                             Text(
                                 text = weatherData.city,
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.h6,
                                 fontWeight = FontWeight.Bold
                             )
 
@@ -221,13 +198,13 @@ fun WeatherScreen() {
                             // Temperature
                             Text(
                                 text = "${weatherData.temperature.roundToInt()}°C",
-                                style = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.h6
                             )
 
                             // Description
                             Text(
                                 text = weatherData.description,
-                                style = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.h6
                             )
 
                             Divider(modifier = Modifier.padding(vertical = 16.dp))
@@ -270,33 +247,12 @@ fun WeatherScreen() {
                         }
                     }
                 }
-            }
-        }
-    }
-}
 
-class WeatherViewModel : ViewModel() {
-    private val _weatherData = MutableStateFlow(WeatherData(isLoading = true))
-    val weatherData: StateFlow<WeatherData> = _weatherData.asStateFlow()
+                // Pie Chart for Humidity and Wind Speed
+                PieChartView(humidity = weatherData.humidity, windSpeed = weatherData.windSpeed)
 
-    fun fetchWeather(city: String) {
-        _weatherData.value = WeatherData(isLoading = true)
-
-        // Simulate network request (you can replace this with your actual network call)
-        viewModelScope.launch {
-            try {
-                // Simulate a delay
-                kotlinx.coroutines.delay(2000)
-                // Simulated data
-                _weatherData.value = WeatherData(
-                    city = city,
-                    temperature = 22.0,
-                    description = "Clear Sky",
-                    humidity = 65,
-                    windSpeed = 5.5
-                )
-            } catch (e: Exception) {
-                _weatherData.value = WeatherData(error = "Failed to load weather data")
+                // Forecast display (Next 5 Days)
+                ForecastSection(forecast = weatherData.forecast)
             }
         }
     }
