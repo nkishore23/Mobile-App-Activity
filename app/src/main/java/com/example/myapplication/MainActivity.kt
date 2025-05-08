@@ -220,6 +220,17 @@ fun ProfileScreen(
                     )
                 }
 
+                Button(onClick = {
+                    localContext.startActivity(Intent(localContext, ContactActivity::class.java))
+                }
+                ) {
+                    Text(
+                        text = "Add Contact",
+                        fontSize = 18.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+
 
             }
         }
