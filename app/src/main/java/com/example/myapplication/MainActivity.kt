@@ -1,4 +1,5 @@
 package com.example.myapplication
+
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
@@ -8,33 +9,27 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberImagePainter
 import com.example.myapplication.ui.theme.MyApplicationTheme
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.graphics.ColorFilter
 
 class MainActivity : ComponentActivity() {
 
@@ -49,21 +44,21 @@ class MainActivity : ComponentActivity() {
             updateResultText(returnedValue)
         }
     }
-         fun launchSkillsActivity(inputText: String) {
-            val intent = Intent(this, SkillActivity::class.java).apply {
-                putExtra("textValue", inputText)
-            }
-            // Launch the activity expecting a result
-            startForResult.launch(intent)
-        }
-
-
 
     private var resultText by mutableStateOf("No result yet")
+    private var profileImageUri by mutableStateOf<String?>(null) // Uri of the profile image
 
     private fun updateResultText(value: String) {
         resultText = value
         Toast.makeText(this, resultText, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun launchSkillsActivity(inputText: String) {
+        val intent = Intent(this, SkillActivity::class.java).apply {
+            putExtra("textValue", inputText)
+        }
+        // Launch the activity expecting a result
+        startForResult.launch(intent)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,9 +88,24 @@ fun ProfileScreen(
     address: String = "Your Address",
     onLaunchSkillsClick: (String) -> Unit
 ) {
-    var localContext = LocalContext.current
     var textValue by remember { mutableStateOf("") }
+    var editableName by remember { mutableStateOf(false) }
+    var editableAddress by remember { mutableStateOf(false) }
+    var profileImageUri by remember { mutableStateOf<String?>(null) }
 
+    val context = LocalContext.current
+
+    // Name and address editing state
+    var editedName by remember { mutableStateOf(name) }
+    var editedAddress by remember { mutableStateOf(address) }
+
+    // Handle image pick result
+    val imagePickLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            profileImageUri = uri.toString()
+        }
+
+    // Surface
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -109,14 +119,31 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(48.dp))
 
             // Profile Image
-//            Image(
-//                painter = painterResource(id = profileImageId),
-//                contentDescription = "Profile Image",
-//                modifier = Modifier
-//                    .size(120.dp)
-//                    .clip(CircleShape),
-//                contentScale = ContentScale.Crop
-//            )
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .background(Color.Gray, shape = CircleShape)
+                    .clickable {
+                        imagePickLauncher.launch("image/*")
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                if (profileImageUri != null) {
+                    Image(
+                        painter = rememberImagePainter(profileImageUri),
+                        contentDescription = "Profile Image",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = "Profile Image",
+                        modifier = Modifier.fillMaxSize(),
+                        tint = Color.White
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -125,9 +152,7 @@ fun ProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 4.dp
-                )
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(
                     modifier = Modifier
@@ -136,125 +161,138 @@ fun ProfileScreen(
                     horizontalAlignment = Alignment.Start
                 ) {
                     // Name
-                    Text(
-                        text = "Name",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = name,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Name",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        IconButton(onClick = { editableName = !editableName }) {
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Name")
+                        }
+                    }
+
+                    if (editableName) {
+                        OutlinedTextField(
+                            value = editedName,
+                            onValueChange = { editedName = it },
+                            label = { Text("Name") },
+                            modifier = Modifier.fillMaxWidth(),
+                            maxLines = 1
+                        )
+                    } else {
+                        Text(
+                            text = editedName,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                    }
 
                     // Address
-                    Text(
-                        text = "Address",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = address,
-                        fontSize = 18.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    OutlinedTextField(
-                        value = textValue,
-                        onValueChange = { textValue = it },
-                        label = {  },
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = {  }
-                    )
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Address",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
 
-                }
-
-                Button(onClick = {
-                    onLaunchSkillsClick(textValue)
-                }
-                ) {
-                    Text(
-                        text = "Show Skills",
-                        fontSize = 18.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-
-
-                Button(onClick = {
-                    try {
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, textValue)
-                            // Try to set WhatsApp as the package
-                            //val pm = localContext.packageManager
-                            setPackage("com.whatsapp")
+                        IconButton(onClick = { editableAddress = !editableAddress }) {
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Address")
                         }
+                    }
 
-                        localContext.startActivity(Intent.createChooser(intent, "Share to"))
-                    } catch (e: Exception) {
-                        Toast.makeText(
-                            localContext,
-                            "Unable to share. Please make sure WhatsApp is installed.",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                    if (editableAddress) {
+                        OutlinedTextField(
+                            value = editedAddress,
+                            onValueChange = { editedAddress = it },
+                            label = { Text("Address") },
+                            modifier = Modifier.fillMaxWidth(),
+                            maxLines = 1
+                        )
+                    } else {
+                        Text(
+                            text = editedAddress,
+                            fontSize = 18.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+
+                    // Skills Button
+                    Button(onClick = { onLaunchSkillsClick(editedName) }) {
+                        Text(
+                            text = "Show Skills",
+                            fontSize = 18.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+
+                    // Share Button
+                    Button(onClick = {
+                        try {
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, editedName)
+                                setPackage("com.whatsapp")
+                            }
+                            context.startActivity(Intent.createChooser(intent, "Share to"))
+                        } catch (e: Exception) {
+                            Toast.makeText(
+                                context,
+                                "Unable to share. Please make sure WhatsApp is installed.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }) {
+                        Text(
+                            text = "Share",
+                            fontSize = 18.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+
+                    // Weather Button
+                    Button(onClick = {
+                        context.startActivity(Intent(context, WeatherActivity::class.java))
+                    }) {
+                        Text(
+                            text = "Show Weather",
+                            fontSize = 18.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+
+                    // Contact Button
+                    Button(onClick = {
+                        context.startActivity(Intent(context, ContactActivity::class.java))
+                    }) {
+                        Text(
+                            text = "Add Contact",
+                            fontSize = 18.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
                     }
                 }
-                ) {
-                    Text(
-                        text = "Share ",
-                        fontSize = 18.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-
-                Button(onClick = {
-                    localContext.startActivity(Intent(localContext, WeatherActivity::class.java))
-                }
-                ) {
-                    Text(
-                        text = "Show  Weather",
-                        fontSize = 18.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-
-
             }
         }
     }
 }
 
-/**
- * How to use this Composable:
- *
- * In your Activity or Fragment:
- *
- * class MainActivity : ComponentActivity() {
- *     override fun onCreate(savedInstanceState: Bundle?) {
- *         super.onCreate(savedInstanceState)
- *         setContent {
- *             YourAppTheme {
- *                 ProfileScreen(
- *                     name = "John Doe",
- *                     address = "123 Main Street, Madurai, Tamil Nadu, India",
- *                     profileImageId = R.drawable.your_profile_image
- *                 )
- *             }
- *         }
- *     }
- * }
- */
-
 @Preview(showBackground = true)
 @Composable
-fun ProfileScreenPreview(onLaunchSkillsClick:(String) -> Unit) {
-    MaterialTheme {
+fun ProfileScreenPreview(onLaunchSkillsClick: (String) -> Unit) {
+    MyApplicationTheme {
         ProfileScreen(
             name = "John Doe",
             address = "123 Main Street, Madurai, Tamil Nadu, India",
-            onLaunchSkillsClick = {inputText -> onLaunchSkillsClick(inputText)}
+            onLaunchSkillsClick = onLaunchSkillsClick
         )
     }
 }
